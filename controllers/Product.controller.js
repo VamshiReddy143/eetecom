@@ -1,6 +1,8 @@
 const cloudinary = require('cloudinary').v2;
-const productModel = require('../models/product.model');
+const productModel= require("../models/product.model")
+const cartModel = require('../models/cart.model');
 const dotenv = require('dotenv');
+const User = require('../models/User');
 dotenv.config();
 
 // Cloudinary configuration
@@ -218,9 +220,77 @@ const GET_PRODUCTS = async (req, res) => {
   }
 };
 
+// Add to Cart
+const ADD_TO_CART = async (req, res) => {
+  try {
+    const { userId, productId, quantity = 1 } = req.body;
+
+    // Validate required fields
+    if (!userId || !productId) {
+      return res.status(400).json({
+        message: 'User ID and Product ID are required',
+      });
+    }
+
+    // Check if user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if product exists
+    const product = await productModel.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    // Find or create cart for the user
+    let cart = await cartModel.findOne({ user: userId });
+
+    if (!cart) {
+      cart = new cartModel({
+        user: userId,
+        products: [{ product: productId, quantity }],
+      });
+    } else {
+      // Check if product already exists in cart
+      const productIndex = cart.products.findIndex(
+        (item) => item.product.toString() === productId
+      );
+
+      if (productIndex > -1) {
+        // Update quantity if product exists
+        cart.products[productIndex].quantity += quantity;
+      } else {
+        // Add new product to cart
+        cart.products.push({ product: productId, quantity });
+      }
+    }
+
+    await cart.save();
+
+    // Populate product details for response
+    const populatedCart = await cartModel
+      .findById(cart._id)
+      .populate('products.product');
+
+    return res.status(200).json({
+      message: 'Product added to cart successfully',
+      cart: populatedCart,
+    });
+  } catch (error) {
+    console.error('Error adding to cart:', error);
+    return res.status(500).json({
+      message: 'Error adding to cart',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   ADD_PRODUCT,
   UPDATE_PRODUCT,
   DELETE_PRODUCT,
   GET_PRODUCTS,
+  ADD_TO_CART,
 };

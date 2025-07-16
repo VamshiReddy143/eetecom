@@ -21,8 +21,10 @@ app.use(fileUpload({ useTempFiles: true, tempFileDir: '/tmp/' })); // ✅ File u
 
 // Your routes
 app.use("/api/products", require("./routes/product.routes"));
+app.use("/api/cart",require("./routes/Cart.routes"))
+app.use("/api/auth",require("./routes/authRoutes"))
 
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     connectDB();
     console.log(`✅ Connected to port ${PORT}`);
